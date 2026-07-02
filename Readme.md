@@ -1,4 +1,4 @@
-\# AD Mini-Lab
+# AD Mini-Lab
 
 
 
@@ -10,7 +10,7 @@ Instead of shipping a pre-built VM or `.ovf`, this repo automates the full build
 
 
 
-\## Architecture
+## Architecture
 
 
 
@@ -30,13 +30,13 @@ Internal host-only network (dedicated `vmnet`), static IPs, DNS pointing to DC1 
 
 
 
-\## How the pipeline works
+## How the pipeline works
 
 
 
-1\. \*\*Packer\*\* builds generalized "golden" images (one per OS: Windows Server, Windows client) from an unattended install via `autounattend.xml`.
+1. **Packer** builds generalized "golden" images (one per OS: Windows Server, Windows client) from an unattended install via `autounattend.xml`.
 
-2\. \*\*Vagrant\*\* clones those golden images into the lab's three VMs and orchestrates boot order and provisioning:
+2. **Vagrant** clones those golden images into the lab's three VMs and orchestrates boot order and provisioning:
 
 &#x20;  - DC1 promotes the forest/domain.
 
@@ -48,11 +48,11 @@ Internal host-only network (dedicated `vmnet`), static IPs, DNS pointing to DC1 
 
 
 
-Seeding is kept deliberately minimal in this first version. More specific cases (AdminSDHolder, CREATOR\_OWNER inheritance, etc.) will be added incrementally later on.
+Seeding is kept deliberately minimal in this first version. More specific cases (AdminSDHolder, CREATOR_OWNER inheritance, etc.) will be added incrementally later on.
 
 
 
-\## Repository structure
+## Repository structure
 
 
 
@@ -94,7 +94,7 @@ ad-mini-lab/
 
 
 
-\## Prerequisites
+## Prerequisites
 
 
 
@@ -102,7 +102,7 @@ Install the following components in this order; each one depends on the previous
 
 
 
-\### 1. VMware Workstation Pro
+### 1. VMware Workstation Pro
 
 
 
@@ -110,15 +110,15 @@ Free for personal use. Download it from the official Broadcom/VMware site and re
 
 
 
-\### 2. Vagrant
+### 2. Vagrant
 
 
 
-Official installer from \[developer.hashicorp.com/vagrant](https://developer.hashicorp.com/vagrant). Use the latest stable release.
+Official installer from [developer.hashicorp.com/vagrant](https://developer.hashicorp.com/vagrant). Use the latest stable release.
 
 
 
-\### 3. The `vagrant-vmware-desktop` plugin
+### 3. The `vagrant-vmware-desktop` plugin
 
 
 
@@ -130,7 +130,7 @@ vagrant plugin install vagrant-vmware-desktop
 
 
 
-This plugin also installs, as a separate step, the \*\*Vagrant VMware Utility\*\* (a system service on Windows). Without that service running, Vagrant will fail with unclear communication errors when trying to bring up the VMs. Verify the service is active:
+This plugin also installs, as a separate step, the **Vagrant VMware Utility** (a system service on Windows). Without that service running, Vagrant will fail with unclear communication errors when trying to bring up the VMs. Verify the service is active:
 
 
 
@@ -146,15 +146,15 @@ If it doesn't appear or is stopped, reboot after installation or start it manual
 
 
 
-\### 4. Packer
+### 4. Packer
 
 
 
-Official installer from \[developer.hashicorp.com/packer](https://developer.hashicorp.com/packer).
+Official installer from [developer.hashicorp.com/packer](https://developer.hashicorp.com/packer).
 
 
 
-\### 5. Evaluation ISOs
+### 5. Evaluation ISOs
 
 
 
@@ -162,25 +162,25 @@ Microsoft doesn't allow automated direct downloads (it sits behind a form), so t
 
 
 
-\- \*\*Windows Server (evaluation)\*\*: download it from the \[Microsoft Evaluation Center](https://www.microsoft.com/evalcenter/) and place it at `packer/iso/windows-server.iso`.
+- **Windows Server (evaluation)**: download it from the [Microsoft Evaluation Center](https://www.microsoft.com/evalcenter/) and place it at `packer/iso/windows-server.iso`.
 
-\- \*\*Windows 10/11 (evaluation)\*\*: same evaluation center, place it at `packer/iso/windows-client.iso`.
-
-
-
-\### Hardware requirements
+- **Windows 10/11 (evaluation)**: same evaluation center, place it at `packer/iso/windows-client.iso`.
 
 
 
-\- Nested virtualization enabled in BIOS/UEFI (VT-x or AMD-V).
-
-\- Minimum recommended: 16GB of host RAM (32GB to comfortably run all 3 VMs at once).
-
-\- Disk space: budget for 60-80GB between ISOs and virtual disks.
+### Hardware requirements
 
 
 
-\### Automated verification
+- Nested virtualization enabled in BIOS/UEFI (VT-x or AMD-V).
+
+- Minimum recommended: 16GB of host RAM (32GB to comfortably run all 3 VMs at once).
+
+- Disk space: budget for 60-80GB between ISOs and virtual disks.
+
+
+
+### Automated verification
 
 
 
@@ -190,7 +190,7 @@ Before launching anything, run the prerequisite-check script:
 
 ```powershell
 
-.\\scripts\\check-prereqs.ps1
+.scriptscheck-prereqs.ps1
 
 ```
 
@@ -200,17 +200,17 @@ This script validates that all of the above software is installed and properly c
 
 
 
-\## Quick start
+## Quick start
 
 
 
 ```powershell
 
-.\\scripts\\check-prereqs.ps1
+.scriptscheck-prereqs.ps1
 
-packer build packer\\windows-server.pkr.hcl
+packer build packerwindows-server.pkr.hcl
 
-packer build packer\\windows-client.pkr.hcl
+packer build packerwindows-client.pkr.hcl
 
 vagrant up
 
@@ -222,7 +222,7 @@ The first full `vagrant up` (image builds + provisioning of all 3 VMs) can easil
 
 
 
-\## Project status
+## Project status
 
 
 
@@ -230,7 +230,7 @@ This lab is a work in progress, documented alongside a video series. Delegation 
 
 
 
-\## License
+## License
 
 
 
