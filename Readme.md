@@ -5,20 +5,17 @@ A one-command-deployable Active Directory lab, built as a foundation for offensi
 
 Instead of shipping a pre-built VM or `.ovf`, this repo automates the full build from scratch: anyone who clones it generates their own lab, with their own Windows evaluation period starting at build time, not at the time the repo was published.
 
-
 ## Architecture
 
+<br>
 
-| VM   | Role                          | IP            | Specs            |
+| VM | Role | IP | CPU | RAM |
+|:---|:-----|:---|:---:|:---:|
+| **DC1** | First DC — forest/domain owner | `192.168.56.10` | 2 vCPU | 4 GB |
+| **DC2** | Second DC — replica | `192.168.56.11` | 2 vCPU | 4 GB |
+| **WS01** | Domain-joined Windows client | `192.168.56.20` | 2 vCPU | 4 GB |
 
-| ---- | ----------------------------- | ------------- | ---------------- |
-
-| DC1  | First DC, forest/domain owner | 192.168.56.10 | 2 vCPU / 4GB RAM |
-
-| DC2  | Second DC, replica            | 192.168.56.11 | 2 vCPU / 4GB RAM |
-
-| WS01 | Domain-joined Windows client  | 192.168.56.20 | 2 vCPU / 4GB RAM |
-
+<br>
 
 
 Internal host-only network (dedicated `vmnet`), static IPs, DNS pointing to DC1 (and later DC2). No dependency on DHCP.
