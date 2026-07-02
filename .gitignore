@@ -1,0 +1,10 @@
+﻿# ISOs - never commit these
+packer/isos/*.iso
+packer/isos/*.ISO
+
+# Packer build artifacts
+packer/output-*/
+*.box
+
+# Vagrant runtime
+.vagrant/
