@@ -4,6 +4,8 @@ A small Active Directory forest you can build from scratch with a single command
 
 Nothing ships as a prebuilt VM. You clone the repo and generate your own lab, so the Windows evaluation timers start when you build, not when the repo was published.
 
+(scripts where generated with AI help, errors may appear)
+
 ## What you get
 
 | VM | Role |
