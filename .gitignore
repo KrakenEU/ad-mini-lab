@@ -1,10 +1,21 @@
-﻿# ISOs - never commit these
+# ISOs (huge, licensed) - never commit
 packer/isos/*.iso
 packer/isos/*.ISO
 
-# Packer build artifacts
+# Packer build artifacts and cache
 packer/output-*/
+packer/build-*/packer_cache/
 *.box
 
-# Vagrant runtime
+# Vagrant runtime state and cloned VMs (tens of GB)
 .vagrant/
+lab-vms/
+
+# Deploy logs
+*.log
+
+# Windows system folders
+$AV_ASW/
+$GetCurrent/
+$RECYCLE.BIN/
+

@@ -5,12 +5,15 @@
 
 .DESCRIPTION
     Checks VMware Workstation, Vagrant, the vagrant-vmware-desktop plugin,
-    the Vagrant VMware Utility service, Packer, nested virtualization,
-    available RAM, disk space, and the presence of the required ISOs.
+    the Vagrant VMware Utility service, Packer, 7-Zip, nested virtualization,
+    available RAM, disk space, the presence of the required ISOs, and
+    WinRM host configuration required for Packer to communicate with VMs.
 
     This script doesn't install anything for you: it just tells you exactly
     what's missing and how to fix it, before you waste time on a build that
     fails halfway through.
+
+    Must be run as Administrator (required for WinRM checks).
 
 .EXAMPLE
     .\check-prereqs.ps1
@@ -18,7 +21,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$IsoDirectory = (Join-Path $PSScriptRoot "packer\isos"),
+    [string]$IsoDirectory = (Join-Path $PSScriptRoot "..\packer\isos"),
     [int]$MinRamGB = 16,
     [int]$RecommendedRamGB = 32,
     [int]$MinFreeDiskGB = 60
@@ -57,9 +60,7 @@ function Test-CommandVersion {
         [string]$VersionArg = "--version"
     )
     $cmd = Get-Command $Command -ErrorAction SilentlyContinue
-    if (-not $cmd) {
-        return $null
-    }
+    if (-not $cmd) { return $null }
     try {
         $output = & $Command $VersionArg 2>&1
         return ($output | Select-Object -First 1).ToString().Trim()
@@ -68,9 +69,23 @@ function Test-CommandVersion {
     }
 }
 
+function Test-IsAdmin {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]$identity
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
 # ---------------------------------------------------------------------------
 Write-Host "AD Mini-Lab - Prerequisite check" -ForegroundColor Magenta
 Write-Host "==================================" -ForegroundColor Magenta
+
+# Admin check - required for WinRM configuration
+if (-not (Test-IsAdmin)) {
+    Write-Host ""
+    Write-Host "  [WARN] Not running as Administrator." -ForegroundColor Yellow
+    Write-Host "         WinRM checks and fixes require elevation." -ForegroundColor Yellow
+    Write-Host "         Re-run this script as Administrator for full validation." -ForegroundColor Yellow
+}
 
 # 1. VMware Workstation -------------------------------------------------
 Write-CheckHeader "VMware Workstation Pro"
@@ -143,7 +158,20 @@ if ($packerVersion) {
     Write-Fail "Packer not found in PATH. Install it from developer.hashicorp.com/packer"
 }
 
-# 5. Nested virtualization ---------------------------------------------
+# 5. 7-Zip (used by setup-vagrant-boxes.ps1 to pack the boxes) ------------
+Write-CheckHeader "7-Zip (box packaging)"
+
+$sevenZip = @(
+    "C:\Program Files\7-Zip\7z.exe",
+    "C:\Program Files (x86)\7-Zip\7z.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($sevenZip) {
+    Write-Pass "7-Zip found at: $sevenZip"
+} else {
+    Write-Fail "7-Zip not found. setup-vagrant-boxes.ps1 uses it to pack the Vagrant boxes. Install it from https://7-zip.org"
+}
+
+# 6. Nested virtualization -----------------------------------------------
 Write-CheckHeader "Virtualization (VT-x / AMD-V)"
 
 $cpu = Get-CimInstance -ClassName Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -159,7 +187,7 @@ if ($cpu) {
     Write-Warn "Could not query CPU information."
 }
 
-# 6. RAM ----------------------------------------------------------------
+# 7. RAM ----------------------------------------------------------------
 Write-CheckHeader "RAM"
 
 $totalRamBytes = (Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction SilentlyContinue).TotalPhysicalMemory
@@ -176,7 +204,7 @@ if ($totalRamBytes) {
     Write-Warn "Could not determine total system RAM."
 }
 
-# 7. Disk space -----------------------------------------------------------
+# 8. Disk space -----------------------------------------------------------
 Write-CheckHeader "Disk space"
 
 $systemDrive = (Get-Item $env:SystemDrive).PSDrive.Name
@@ -192,7 +220,7 @@ if ($drive) {
     Write-Warn "Could not determine free disk space."
 }
 
-# 8. ISOs -----------------------------------------------------------------
+# 9. ISOs -----------------------------------------------------------------
 Write-CheckHeader "Installation ISOs"
 
 $resolvedIsoDir = $null
@@ -203,7 +231,7 @@ try {
 }
 
 $serverIso = Join-Path $resolvedIsoDir "windows-server.iso"
-$clientIso = Join-Path $resolvedIsoDir "windows-client.iso"
+$clientIso  = Join-Path $resolvedIsoDir "windows-client.iso"
 
 if (Test-Path $serverIso) {
     Write-Pass "Windows Server ISO found: $serverIso"
@@ -215,6 +243,66 @@ if (Test-Path $clientIso) {
     Write-Pass "Windows client ISO found: $clientIso"
 } else {
     Write-Fail "Windows client ISO not found at: $clientIso (download it from the Microsoft Evaluation Center)"
+}
+
+# 10. WinRM host configuration -------------------------------------------
+# Packer communicates with VMs over WinRM (HTTP, Basic auth, unencrypted).
+# The host WinRM client must be configured to allow this or Packer will
+# hang waiting for a connection that it cannot establish.
+Write-CheckHeader "WinRM host configuration (required for Packer)"
+
+if (-not (Test-IsAdmin)) {
+    Write-Warn "Skipping WinRM checks - not running as Administrator. Re-run elevated for full validation."
+} else {
+    # 9a. WinRM service running
+    $winrmService = Get-Service -Name "WinRM" -ErrorAction SilentlyContinue
+    if ($winrmService -and $winrmService.Status -eq "Running") {
+        Write-Pass "WinRM service is running"
+    } else {
+        Write-Fail "WinRM service is not running. Fix with: Start-Service WinRM; Set-Service WinRM -StartupType Automatic; winrm quickconfig -quiet"
+    }
+
+    # 9b. AllowUnencrypted
+    $allowUnencrypted = (Get-Item WSMan:\localhost\Client\AllowUnencrypted -ErrorAction SilentlyContinue).Value
+    if ($allowUnencrypted -eq "true") {
+        Write-Pass "WinRM client AllowUnencrypted = true"
+    } else {
+        Write-Fail "WinRM client does not allow unencrypted traffic. Fix with: winrm set winrm/config/client '@{AllowUnencrypted=`"true`"}'"
+    }
+
+    # 9c. Basic auth on client
+    $basicAuth = (Get-Item WSMan:\localhost\Client\Auth\Basic -ErrorAction SilentlyContinue).Value
+    if ($basicAuth -eq "true") {
+        Write-Pass "WinRM client Basic authentication = true"
+    } else {
+        Write-Fail "WinRM client Basic auth is disabled. Fix with: winrm set winrm/config/client/auth '@{Basic=`"true`"}'"
+    }
+
+    # 9d. TrustedHosts
+    $trustedHosts = (Get-Item WSMan:\localhost\Client\TrustedHosts -ErrorAction SilentlyContinue).Value
+    if ($trustedHosts -eq "*" -or $trustedHosts -match "\*") {
+        Write-Pass "WinRM TrustedHosts = * (accepts any host)"
+    } elseif ($trustedHosts -and $trustedHosts.Length -gt 0) {
+        Write-Warn "WinRM TrustedHosts is set to '$trustedHosts' (not wildcard). Packer may fail if the VM IP is not in this list. Fix with: winrm set winrm/config/client '@{TrustedHosts=`"*`"}'"
+    } else {
+        Write-Fail "WinRM TrustedHosts is empty. Packer cannot connect to VMs. Fix with: winrm set winrm/config/client '@{TrustedHosts=`"*`"}'"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# One-shot fix command block (printed only if WinRM issues found)
+# ---------------------------------------------------------------------------
+$winrmIssues = $script:Issues | Where-Object { $_ -match "WinRM" }
+if ($winrmIssues.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  To fix all WinRM issues at once, run the following as Administrator:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "    Start-Service WinRM" -ForegroundColor White
+    Write-Host "    Set-Service WinRM -StartupType Automatic" -ForegroundColor White
+    Write-Host "    winrm quickconfig -quiet" -ForegroundColor White
+    Write-Host "    winrm set winrm/config/client '@{AllowUnencrypted=`"true`"}'" -ForegroundColor White
+    Write-Host "    winrm set winrm/config/client/auth '@{Basic=`"true`"}'" -ForegroundColor White
+    Write-Host "    winrm set winrm/config/client '@{TrustedHosts=`"*`"}'" -ForegroundColor White
 }
 
 # ---------------------------------------------------------------------------
